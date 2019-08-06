@@ -51,4 +51,4 @@ statscbindScale[,31] <- rowSums(statscbindScale[c(10,13,16,17,20,21,23,24,25,28,
 statscbindScale$combined_Z <- statscbindScale[,31]/12
 ##Data visualization
 statscbindScale$abovebelow_Z <- ifelse(statscbindScale$combined_Z < 0, "below", "above")
-ggplot(subset(statscbindScale, (combined_Z < -.8 | combined_Z > 1) & G > -1.0), aes(x=Player, y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=abovebelow_Z), width=.5) + scale_fill_manual(name="Mileage", labels=c("Above Average", "Below Average"), values=c("above"="#FF2E00", "below"="#0078FF")) +labs(title ="Normalized Production for the 2018-19 NBA Season") + coord_flip()
+ggplot(subset(statscbindScale), aes(x=Player, y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=abovebelow_Z), width=.5) + scale_fill_manual(name="Mileage", labels=c("Above Average", "Below Average"), values=c("above"="#FF2E00", "below"="#0078FF")) +labs(title ="Normalized Production for the 2018-19 NBA Season") + coord_flip()
