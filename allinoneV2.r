@@ -3,10 +3,13 @@ install.packages("XML")
 install.packages("RCurl")
 install.packages("plyr")
 install.packages("ggplot2")
+install.packages("xtable")
+library(xtable)
 library(XML)
 library(RCurl)
 library(plyr)
 library(ggplot2)
+library(reshape2)
 url <- "https://www.basketball-reference.com/leagues/NBA_2019_per_game.html"
 # These produce the same results: url <- "https://stats.nba.com/leaders/"
 urldata <-  getURL(url)
@@ -71,13 +74,45 @@ names(freqframe)[2] <- "PlayerPosition"
 ggplot(freqframe, aes(x="", y= Prop, fill = factor(PlayerPosition))) + geom_bar(width = 1, stat = "identity") + theme(axis.line = element_blank(), plot.title = element_text(hjust = 0.5), axis.text.x = element_blank()) + labs(fill = "Position", x = NULL, y = NULL, title = "Proportion of Positions in the Top 25 Players") + coord_polar(theta = "y", start = 0) + geom_text(aes(label=Prop), position = position_stack(vjust = 0.5))
 ##Position totals bar charts
 statscbindNoScale <- cbind(statsbindcharacters[c(1,2,4)], statsbind2)
-postot <- tapply(statscbindNoScale$FG, statscbindNoScale$Pos, FUN = sum)
+posTOT <- tapply(statscbindNoScale$FG, statscbindNoScale$Pos, FUN = sum)
 posagg <- aggregate(. ~ statscbindNoScale$Pos, statscbindNoScale[c(8,11,14,17,18,23,24,25,26,29)], sum)
 names(posagg)[1] <- "Pos"
-posagg5 <- subset(positionaggregates, eFG > 1.04)
+posagg5 <- subset(posagg, eFG > 1.04)
 ggplot(posagg5, aes(fill=Pos, y=BLK, x = Pos)) + geom_bar(position="dodge", stat="identity")
-libary(reshape2)
 posagglong <- melt(posagg5, id.vars = c("Pos"))
-ggplot(posagglong, aes(fill = Pos, y = value, x = variable)) + geom_bar(position="fill", stat = "identity")
+ggplot(posagglong[c(1:15,21:50),], aes(fill = Pos, y = value, x = variable)) + geom_bar(position="fill", stat = "identity")
+posagg5percent <- posagg5[,2:11]/colSums(posagg5[,2:11])
+posagg5percent <- cbind(posagg5[1], posagg5percent)
+posaggPctlong <- melt(posagg5percent, id.vars = c("Pos"))
+##Not good way of making this
+posagg5pct <- posagg5[,2]/1671.900
+posagg5pct2 <- posagg5[,3]/455
+posagg5pct3 <- posagg5[,4]/1217
+posagg5pct4 <- posagg5[,5]/262
+posagg5pct5 <- posagg5[,6]/709
+posagg5pct6 <- posagg5[,7]/1893.2
+posagg5pct7 <- posagg5[,8]/1008.100
+posagg5pct8 <- posagg5[,9]/324.1
+posagg5pct9 <- posagg5[,10]/204.9
+posagg5pct10 <- posagg5[,11]/4507.2
+posagg5pct <- cbind(posagg5pct, posagg5pct2)
 
-statscbindScale <- statscbindScale[with(statscbindScale,order(-combined_Z)),]
+##Defensive winners
+statscbindNoScale$firstdefense <- ifelse(statscbindNoScale$Player == "Rudy Gobert" | statscbindNoScale$Player == "Paul George" | statscbindNoScale$Player == "Marcus Smart" | statscbindNoScale$Player == "Eric Bledsoe" | statscbindNoScale$Player == "Giannis Antetokounmpo", 1, 0)
+statscbindNoScale$seconddefense <- ifelse(statscbindNoScale$Player == "Jrue Holiday" | statscbindNoScale$Player == "Klay Thompson" | statscbindNoScale$Player == "Joel Embiid" | statscbindNoScale$Player == "Draymond Green" | statscbindNoScale$Player == "Kawhi Leonard", 1, 0)
+statscbindNoScale$alldefense <- ifelse(statscbindNoScale$firstdefense == 1 | statscbindNoScale$seconddefense == 1 , 1 , 0)
+
+##Some stuff to spice up Part 1
+urladv <- "https://www.basketball-reference.com/leagues/NBA_2019_advanced.html"
+urladvdata <-  getURL(urladv)
+dataadv <- readHTMLTable(urladvdata, stringsAsFactors = FALSE, encoding = "UTF-8")
+datadv <- structure(dataadv, row.names =c(NA, -734), .Names = seq_along(dataadv), class = "data.frame")
+advstats <- ldply(dataadv, data.frame)
+advstats$.id <- NULL
+advstats$Rk <- NULL
+advstats[,c('PER', 'BPM', 'G')] <- sapply(advstats[,c('PER','BPM', 'G')], as.numeric)
+advstats <- subset(advstats, G > 20)
+advstats <- advstats[with(advstats,order(-PER)),]
+advstats[1:20,]
+advstatsHTML <- advstats[1:10,c('Player', 'PER', 'BPM')]
+print(xtable(advstatsHTML, caption = "Top 10 Players Sorted by PER"), "html", include.rownames = FALSE, caption.placement = 'top', html.table.attributes = 'align="left"')
