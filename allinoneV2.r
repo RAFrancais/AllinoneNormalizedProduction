@@ -55,14 +55,16 @@ statscbindScale$NegPF <- statscbindScale$PF * -1
 statscbindScale[,33] <- rowSums(statscbindScale[c(11,14,17,18,23,24,25,26,29,31,32)])
 statscbindScale$combined_Z <- statscbindScale[,33]/11
 statscbindScale <- statscbindScale[with(statscbindScale,order(-combined_Z)),]
+
+##Data vizualization section
 ##Top 20/Bottom 20 Diverging Bars Visualization
 statscbindScale$abovebelow_Z <- ifelse(statscbindScale$combined_Z < 0, "below", "above")
-ggplot(statscbindScale[c(1:20,511:530),], aes(x=reorder(Player,combined_Z), y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=abovebelow_Z), width=.5) + scale_fill_manual(name= "Z Score", labels=c("Above 0", "Below 0"), values=c("above"="#FF2E00", "below"="#0078FF")) +labs(title ="Normalized Production for the 2018-19 NBA Season") + coord_flip() + xlab("Player") + ylab("Combined Z Score")
+top20bot20 <- ggplot(statscbindScale[c(1:20,511:530),], aes(x=reorder(Player,combined_Z), y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=abovebelow_Z), width=.5) + scale_fill_manual(name= "Z Score", labels=c("Above 0", "Below 0"), values=c("above"="#FF2E00", "below"="#0078FF")) +labs(title ="Normalized Production for the 2018-19 NBA Season") + coord_flip() + xlab("Player") + ylab("Combined Z Score")
 ##Diverging Bars players with over 20 games played
 statscbindScalegames <- subset(statscbindScale, G > -1.14)
-ggplot(statscbindScalegames[c(1:20,404:423),], aes(x=reorder(Player,combined_Z), y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=abovebelow_Z), width=.5) + scale_fill_manual(name="Z Score", labels=c("Above 0", "Below 0"), values=c("above"="#FF2E00", "below"="#0078FF")) +labs(title ="Normalized Production for the 2018-19 NBA Season", subtitle = "Players with over 20 games played") + coord_flip() + xlab("Player") + ylab("Combined Z Score")
+top20bot20g <- ggplot(statscbindScalegames[c(1:20,404:423),], aes(x=reorder(Player,combined_Z), y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=abovebelow_Z), width=.5) + scale_fill_manual(name="Z Score", labels=c("Above 0", "Below 0"), values=c("above"="#FF2E00", "below"="#0078FF")) +labs(title ="Normalized Production for the 2018-19 NBA Season", subtitle = "Players with over 20 games played") + coord_flip() + xlab("Player") + ylab("Combined Z Score")
 #Top 25 Players by Normalized Position 
-ggplot(subset(statscbindScale[1:25,]), aes(x=reorder(Player,combined_Z), y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=Pos), width=.5) + scale_fill_manual(name="Position", labels=c("Center", "Power Forward", "Point Guard", "Small Forward", "Shooting Guard"), values=c("PG"="#C49A00", "SG"="#00B6EB", "SF"="#FB61D7", "PF"="#53B400","C"="#F8766D")) +labs(title ="Top 25 Players by Normalized Production") + coord_flip() + xlab('Player') + ylab('Combined Z Score')
+top25 <- ggplot(subset(statscbindScale[1:25,]), aes(x=reorder(Player,combined_Z), y=combined_Z, label="Combined Z Score")) + geom_bar(stat='identity', aes(fill=Pos), width=.5) + scale_fill_manual(name="Position", labels=c("Center", "Power Forward", "Point Guard", "Small Forward", "Shooting Guard"), values=c("PG"="#C49A00", "SG"="#00B6EB", "SF"="#FB61D7", "PF"="#53B400","C"="#F8766D")) +labs(title ="Top 25 Players by Normalized Production") + coord_flip() + xlab('Player') + ylab('Combined Z Score')
 #Pie Chart and Frequency table
 freqtable <- c(8/25, 1/25, 8/25, 6/25, 2/25)
 freqmatrix <- matrix(freqtable, ncol=5, byrow = TRUE)
@@ -71,31 +73,21 @@ freqframe <- as.data.frame(freqmatrix)
 freqframe[,2] <- c("Center", "Power Forward", "Point Guard", "Small Forward", "Shooting Guard")
 names(freqframe)[1] <- "Prop"
 names(freqframe)[2] <- "PlayerPosition"
-ggplot(freqframe, aes(x="", y= Prop, fill = factor(PlayerPosition))) + geom_bar(width = 1, stat = "identity") + theme(axis.line = element_blank(), plot.title = element_text(hjust = 0.5), axis.text.x = element_blank()) + labs(fill = "Position", x = NULL, y = NULL, title = "Proportion of Positions in the Top 25 Players") + coord_polar(theta = "y", start = 0) + geom_text(aes(label=Prop), position = position_stack(vjust = 0.5))
-##Position totals bar charts
+piechart <- ggplot(freqframe, aes(x="", y= Prop, fill = factor(PlayerPosition))) + geom_bar(width = 1, stat = "identity") + theme(axis.line = element_blank(), plot.title = element_text(hjust = 0.5), axis.text.x = element_blank()) + labs(fill = "Position", x = NULL, y = NULL, title = "Proportion of Positions in the Top 25 Players") + coord_polar(theta = "y", start = 0) + geom_text(aes(label=Prop), position = position_stack(vjust = 0.5))
+##Position totals bar charts -- not used
 statscbindNoScale <- cbind(statsbindcharacters[c(1,2,4)], statsbind2)
 posTOT <- tapply(statscbindNoScale$FG, statscbindNoScale$Pos, FUN = sum)
-posagg <- aggregate(. ~ statscbindNoScale$Pos, statscbindNoScale[c(8,11,14,17,18,23,24,25,26,29)], sum)
+posagg <- aggregate(. ~ statscbindNoScale$Pos, statscbindNoScale[c(11, 14, 17, 18, 23, 24, 25, 26, 27, 28, 29)], sum)
 names(posagg)[1] <- "Pos"
 posagg5 <- subset(posagg, eFG > 1.04)
-ggplot(posagg5, aes(fill=Pos, y=BLK, x = Pos)) + geom_bar(position="dodge", stat="identity")
+names(posagg5)[3] <- "ThreeP"; names(posagg5)[4] <- "TwoP"
+posagg5 = mutate(posagg5, ThreeP = ThreeP/sum(ThreeP), TwoP = TwoP/sum(TwoP), FT = FT/sum(FT), TRB = TRB/sum(TRB), AST = AST/sum(AST), STL = STL/sum(STL), BLK = BLK/sum(BLK), TOV = TOV/sum(TOV), PF = PF/sum(PF), PTS = PTS/sum(PTS))
 posagglong <- melt(posagg5, id.vars = c("Pos"))
-ggplot(posagglong[c(1:15,21:50),], aes(fill = Pos, y = value, x = variable)) + geom_bar(position="fill", stat = "identity")
-posagg5percent <- posagg5[,2:11]/colSums(posagg5[,2:11])
+posagglong[,3] <- round(posagglong[,3], 2)
+#need to rename x axis 
+ggplot(posagglong[c(6:55),], aes(fill = Pos, y = value, x = variable)) + geom_bar(position="fill", stat = "identity") + geom_text(aes(label = value), position = position_stack(vjust = 0.5), size = 4) + ylab("Percentage") + xlab("Box Score Variables")posagg5percent <- posagg5[,2:11]/colSums(posagg5[,2:11])
 posagg5percent <- cbind(posagg5[1], posagg5percent)
 posaggPctlong <- melt(posagg5percent, id.vars = c("Pos"))
-##Not good way of making this
-posagg5pct <- posagg5[,2]/1671.900
-posagg5pct2 <- posagg5[,3]/455
-posagg5pct3 <- posagg5[,4]/1217
-posagg5pct4 <- posagg5[,5]/262
-posagg5pct5 <- posagg5[,6]/709
-posagg5pct6 <- posagg5[,7]/1893.2
-posagg5pct7 <- posagg5[,8]/1008.100
-posagg5pct8 <- posagg5[,9]/324.1
-posagg5pct9 <- posagg5[,10]/204.9
-posagg5pct10 <- posagg5[,11]/4507.2
-posagg5pct <- cbind(posagg5pct, posagg5pct2)
 
 ##Defensive winners
 statscbindNoScale$firstdefense <- ifelse(statscbindNoScale$Player == "Rudy Gobert" | statscbindNoScale$Player == "Paul George" | statscbindNoScale$Player == "Marcus Smart" | statscbindNoScale$Player == "Eric Bledsoe" | statscbindNoScale$Player == "Giannis Antetokounmpo", 1, 0)
