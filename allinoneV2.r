@@ -4,12 +4,14 @@ install.packages("RCurl")
 install.packages("plyr")
 install.packages("ggplot2")
 install.packages("xtable")
+install.packages("cowplot")
 library(xtable)
 library(XML)
 library(RCurl)
 library(plyr)
 library(ggplot2)
 library(reshape2)
+library(cowplot)
 url <- "https://www.basketball-reference.com/leagues/NBA_2019_per_game.html"
 # These produce the same results: url <- "https://stats.nba.com/leaders/"
 urldata <-  getURL(url)
@@ -77,17 +79,14 @@ piechart <- ggplot(freqframe, aes(x="", y= Prop, fill = factor(PlayerPosition)))
 ##Position totals bar charts -- not used
 statscbindNoScale <- cbind(statsbindcharacters[c(1,2,4)], statsbind2)
 posTOT <- tapply(statscbindNoScale$FG, statscbindNoScale$Pos, FUN = sum)
-posagg <- aggregate(. ~ statscbindNoScale$Pos, statscbindNoScale[c(11, 14, 17, 18, 23, 24, 25, 26, 27, 28, 29)], sum)
+posagg <- aggregate(. ~ statscbindNoScale$Pos, statscbindNoScale[c(11, 14, 18, 23, 24, 25, 26, 27, 28, 29)], sum)
 names(posagg)[1] <- "Pos"
-posagg5 <- subset(posagg, eFG > 1.04)
-names(posagg5)[3] <- "ThreeP"; names(posagg5)[4] <- "TwoP"
+posagg5 <- subset(posagg, TRB > 9)
+names(posagg5)[2] <- "ThreeP"; names(posagg5)[3] <- "TwoP"
 posagg5 = mutate(posagg5, ThreeP = ThreeP/sum(ThreeP), TwoP = TwoP/sum(TwoP), FT = FT/sum(FT), TRB = TRB/sum(TRB), AST = AST/sum(AST), STL = STL/sum(STL), BLK = BLK/sum(BLK), TOV = TOV/sum(TOV), PF = PF/sum(PF), PTS = PTS/sum(PTS))
 posagglong <- melt(posagg5, id.vars = c("Pos"))
 posagglong[,3] <- round(posagglong[,3], 2)
-#need to rename x axis 
-ggplot(posagglong[c(6:55),], aes(fill = Pos, y = value, x = variable)) + geom_bar(position="fill", stat = "identity") + geom_text(aes(label = value), position = position_stack(vjust = 0.5), size = 4) + ylab("Percentage") + xlab("Box Score Variables")posagg5percent <- posagg5[,2:11]/colSums(posagg5[,2:11])
-posagg5percent <- cbind(posagg5[1], posagg5percent)
-posaggPctlong <- melt(posagg5percent, id.vars = c("Pos"))
+ggplot(posagglong, aes(fill = Pos, y = value, x = variable)) + geom_bar(position="fill", stat = "identity") + geom_text(aes(label = value), position = position_stack(vjust = 0.5), size = 4) + ylab("Percentage") + xlab("Box Score Variables")
 
 ##Defensive winners
 statscbindNoScale$firstdefense <- ifelse(statscbindNoScale$Player == "Rudy Gobert" | statscbindNoScale$Player == "Paul George" | statscbindNoScale$Player == "Marcus Smart" | statscbindNoScale$Player == "Eric Bledsoe" | statscbindNoScale$Player == "Giannis Antetokounmpo", 1, 0)
