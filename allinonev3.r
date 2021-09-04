@@ -1,24 +1,29 @@
 setwd("D:/RLearning/All-in-one")
 install.packages("XML")
 install.packages("RCurl")
-install.packages("plyr")
 install.packages("ggplot2")
 install.packages("xtable")
+#gtsummary better
 install.packages("cowplot")
 install.packages("httr")
+install.packages("rvest")
+install.packages("xml2")
+install.packages("dplyr")
 library(xtable)
 library(XML)
 library(RCurl)
-library(plyr)
 library(ggplot2)
 library(reshape2)
 library(cowplot)
 library(httr)
-url <- "https://www.basketball-reference.com/leagues/NBA_2019_per_game.html"
+library(rvest)
+library(xml2)
+library(dplyr)
+newurl <- "https://www.basketball-reference.com/leagues/NBA_2019_per_game.html"
 # These produce the same results: url <- "https://stats.nba.com/leaders/"
-urldata <-  getURL(url)
-data <- readHTMLTable(urldata, stringsAsFactors = FALSE, encoding = "UTF-8")
-dat <- structure(data, row.names = c(NA, -734), .Names = seq_along(data), class = "data.frame")
+newurldata <-  GET(newurl)
+newdata <- readHTMLTable(newurldata, stringsAsFactors = FALSE, encoding = "UTF-8")
+newdat <- structure(data, row.names = c(NA, -734), .Names = seq_along(data), class = "data.frame")
 #This one does not work dat3 <- as.data.frame(data, col.names = names(data), headers = TRUE)
 
 #This one works - But all variables are characters
@@ -30,7 +35,7 @@ colnames(stats18)[12] <- "FGpct"; colnames(stats18)[13] <- "3P"; colnames(stats1
 stats18$.id <- NULL
 stats18$Rk <- NULL
 #Removing Non English Characters from Traded Players
-stats18[399:401,1] <- "Skal"; stats18[446:448,1] <- "Boban"; stats18[430:432,1] <- "Timothe"; stats18[484:486,1] <- "Nikola Mirotic"; stats18[599:601,1] <- "Dario"; stats18[680:682,1] <- "Jonas Valanciunas"; stats18[107,2] <- "SF"
+stats18[399:401,1] <- "Skal Labissiere"; stats18[446:448,1] <- "Boban"; stats18[430:432,1] <- "Timothe Luwawu-Cabarrot"; stats18[484:486,1] <- "Nikola Mirotic"; stats18[599:601,1] <- "Dario Saric"; stats18[680:682,1] <- "Jonas Valanciunas"; stats18[107,2] <- "SF"
 
 ##Numeric needs to ignore the character variables
 stats18numeric <- as.data.frame(sapply(stats18[c(3,5:29)], as.numeric))
@@ -56,12 +61,13 @@ statsbind2 <- as.data.frame(sapply(statsbind2[c(3,5:29)], as.numeric))
 statsbind2[is.na(statsbind2)] <- 0
 statsbind2$PTSZ <- (statsbind2$PTS - mean(statsbind2$PTS))/sd(statsbind2$PTS)
 statsbindScale <- scale(statsbind2[,1:27])
+
 ##Problem here is that they need identical rows so the orignal needs to be subset
 statscbindScale <- cbind(statsbindcharacters[c(1,2,4)], statsbindScale)
 statscbindScale$NegTOV <- statscbindScale$TOV * -1
 statscbindScale$NegPF <- statscbindScale$PF * -1
 ##Creating the all-in-one value
-statscbindScale[,33] <- rowSums(statscbindScale[c(11,14,17,18,23,24,25,26,29,31,32)])
+statscbindScale[,'Rs'] <- rowSums(statscbindScale[c(11,14,17,18,23,24,25,26,29,31,32)])
 statscbindScale$combined_Z <- statscbindScale[,33]/11
 statscbindScale <- statscbindScale[with(statscbindScale,order(-combined_Z)),]
 
@@ -115,3 +121,133 @@ advstats <- advstats[with(advstats,order(-PER)),]
 advstats[1:20,]
 advstatsHTML <- advstats[1:10,c('Player', 'PER', 'BPM')]
 print(xtable(advstatsHTML, caption = "Top 10 Players Sorted by PER"), "html", include.rownames = FALSE, caption.placement = 'top', html.table.attributes = 'align="left"')
+
+
+
+
+
+
+
+
+
+
+
+#####
+
+
+
+
+
+
+
+theurl <- "https://www.basketball-reference.com/leagues/NBA_2019_per_game.html"
+file <- read_html(theurl)
+table <- html_nodes(file, "table")
+tablenba <- html_table(table)
+nbadf <- structure(tablenba, row.names = c(NA, -734), .Names = seq_along(tablenba), class = "data.frame")
+nbadf <- ldply(nbadf, data.frame)
+
+
+
+nbadf <- nbadf %>% 
+  dplyr::rename(
+    FGpct = FG.,
+    threeP = X3P,
+    threePA = X3PA,
+    threePpct = X3P.,
+    twoP = X2P,
+    twoPA = X2PA,
+    twoPpct = X2P.,
+    eFG = eFG.,
+    FTpct = FT.) %>%
+  dplyr::select(-.id, -Rk)
+
+
+## nbadf %>% mutate(x = replace(x, x == ))
+
+nbadf[399:401, 'Player'] <- 'Skal Labissiere'; nbadf[446:448, 'Player'] <- 'Boban Marjanovic'; nbadf[430:432, 'Player'] <- 'Timothe Luwawu-Cabarrot'; nbadf[484:486, 'Player'] <- 'Nikola Mirotic'; nbadf[600:602, 'Player'] <- 'Dario Saric'; nbadf[681:683, 'Player'] <- 'Jonas Valanciunas'; nbadf[107, 'Pos'] <- 'SF'
+
+nbadf <- nbadf %>% mutate(across(!c(Player, Pos, Tm), as.numeric))
+
+str(nbadf)
+
+nbadf[is.na(nbadf)] <- 0
+
+##Creating a vector that contains each player traded during the 2018-19 season
+##Removing duplicated players then row binding their season totals back
+
+traded <- nbadf %>% dplyr::filter(Tm == 'TOT') %>% select(Player) %>% unlist()
+traded
+##nbatraded <- nbadf %>% dplyr::filter(Player %in% traded)
+##nbanottraded <- nbadf %>% dplyr::filter(!Player %in% traded)
+
+nbadf <- bind_rows(nbadf %>% dplyr::filter(Tm == 'TOT'), 
+                   nbadf %>% dplyr::filter(!Player %in% traded)
+                     ) %>% 
+            filter(Player != 'Player')
+
+#nbadf <- scale(nbadf[, select(!c(Player, Pos, Tm))])
+#nbazscore <- nbadf %>% mutate(across(!c(Player, Pos, Tm)), zscr)
+#nbazscore <- scale(nbadf[,-c(nbadf$Player, nbadf$Pos, nbadf$Tm)])
+#statsbind2$PTSZ <- (statsbind2$PTS - mean(statsbind2$PTS))/sd(statsbind2$PTS)
+
+nbadf %>% mutate(across(!c(Player, Pos, Tm)), list(c(scale(.))))
+
+
+#zscr <- function(x){
+ #(x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+#} 
+
+
+nbadfz <- as.data.frame(scale(nbadf[, c(5:29)]))
+nbadfz <- bind_cols(nbadf[, 1:4], nbadfz)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###nbadf %>% dplyr::mutate_at(-'Player', as.numeric) %>% str()
+
+
+piedf <- data.frame(pie = c('Apple', 'Blueberry', 'Banana'),
+                    state = c('Arizona', 'Alaska', 'Alabama'),
+                    C = as.character(rnorm(3)),
+                    D = as.character(runif(3))
+                    )
+str(piedf)
+
+
+piedf %>% mutate_at(filter(), as.numeric) %>% str()
+#How to change data types of columns by excluding character columns
+
+
+
+nbadf[1] = iconv(nbadf[1], from = '', to = 'ASCII//TRANSLIT')
+
+nbadf[,1] = iconv(nbadf[,1], from="UFT-8", to="ASCII//TRANSLIT")
+
+Encoding(nbadf[,1])
+
+iconv(nbadf[,1], to='ASCII//TRANSLIT')
+
+
