@@ -1,23 +1,20 @@
 setwd("D:/RLearning/All-in-one")
-install.packages("XML")
-install.packages("RCurl")
+
 install.packages("ggplot2")
 install.packages("xtable")
 #gtsummary better
 install.packages("cowplot")
-install.packages("httr")
 install.packages("rvest")
 install.packages("xml2")
 install.packages("dplyr")
+install.packages("plyr")
 library(xtable)
-library(XML)
-library(RCurl)
 library(ggplot2)
 library(reshape2)
 library(cowplot)
-library(httr)
 library(rvest)
 library(xml2)
+library(plyr)
 library(dplyr)
 newurl <- "https://www.basketball-reference.com/leagues/NBA_2019_per_game.html"
 # These produce the same results: url <- "https://stats.nba.com/leaders/"
@@ -145,87 +142,93 @@ file <- read_html(theurl)
 table <- html_nodes(file, "table")
 tablenba <- html_table(table)
 nbadf <- structure(tablenba, row.names = c(NA, -734), .Names = seq_along(tablenba), class = "data.frame")
-nbadf <- ldply(nbadf, data.frame)
+nbadf <- as.data.frame(do.call(rbind, nbadf), stringsAsFactors = FALSE) 
+nbadf$Player <- iconv(nbadf$Player, from="UTF-8", to="LATIN1")
+#nbadf <- ldply(nbadf, data.frame) - phasing out plyr due to conflicts with dplyr
 
 
 
 nbadf <- nbadf %>% 
-  dplyr::rename(
-    FGpct = FG.,
-    threeP = X3P,
-    threePA = X3PA,
-    threePpct = X3P.,
-    twoP = X2P,
-    twoPA = X2PA,
-    twoPpct = X2P.,
-    eFG = eFG.,
-    FTpct = FT.) %>%
-  dplyr::select(-.id, -Rk)
+  rename(
+    FGpct = `FG%`,
+    threeP = `3P`,
+    threePA = `3PA`,
+    threePpct = `3P%`,
+    twoP = `2P`,
+    twoPA = `2PA`,
+    twoPpct = `2P%`,
+    eFG = `eFG%`,
+    FTpct = `FT%`) %>%
+  select(-Rk)
 
 
-## nbadf %>% mutate(x = replace(x, x == ))
 
-nbadf[399:401, 'Player'] <- 'Skal Labissiere'; nbadf[446:448, 'Player'] <- 'Boban Marjanovic'; nbadf[430:432, 'Player'] <- 'Timothe Luwawu-Cabarrot'; nbadf[484:486, 'Player'] <- 'Nikola Mirotic'; nbadf[600:602, 'Player'] <- 'Dario Saric'; nbadf[681:683, 'Player'] <- 'Jonas Valanciunas'; nbadf[107, 'Pos'] <- 'SF'
+## obsolete with inconv nbadf[399:401, 'Player'] <- 'Skal Labissiere'; nbadf[446:448, 'Player'] <- 'Boban Marjanovic'; nbadf[430:432, 'Player'] <- 'Timothe Luwawu-Cabarrot'; nbadf[484:486, 'Player'] <- 'Nikola Mirotic'; nbadf[600:602, 'Player'] <- 'Dario Saric'; nbadf[681:683, 'Player'] <- 'Jonas Valanciunas'; nbadf[107, 'Pos'] <- 'SF'
+
 
 nbadf <- nbadf %>% mutate(across(!c(Player, Pos, Tm), as.numeric))
-
 str(nbadf)
-
 nbadf[is.na(nbadf)] <- 0
 
+
 ##Creating a vector that contains each player traded during the 2018-19 season
-##Removing duplicated players then row binding their season totals back
+##Removing duplicated players then adding season totals back
 
-traded <- nbadf %>% dplyr::filter(Tm == 'TOT') %>% select(Player) %>% unlist()
+traded <- nbadf %>% 
+  filter(Tm == 'TOT') %>% 
+  select(Player) %>% 
+  unlist()
+
 traded
-##nbatraded <- nbadf %>% dplyr::filter(Player %in% traded)
-##nbanottraded <- nbadf %>% dplyr::filter(!Player %in% traded)
 
-nbadf <- bind_rows(nbadf %>% dplyr::filter(Tm == 'TOT'), 
-                   nbadf %>% dplyr::filter(!Player %in% traded)
-                     ) %>% 
-            filter(Player != 'Player')
+
+##Combining Players that were not traded and the season totals of players that were traded
+##Then filtering the extraneous Player headers
+
+nbadf <- bind_rows(nbadf %>% filter(Tm == 'TOT'), 
+                   nbadf %>% filter(!Player %in% traded)
+                   ) %>% 
+         filter(Player != 'Player')
+
+
+#Creating Z score data frame
+#Then creating NormalizedBoxRating
+
+nbadfz <- as.data.frame(scale(nbadf[, c(5:29)]
+                              )
+                        ) 
+
+
+nbadfz <- bind_cols(nbadf[, 1:4], nbadfz)
+
+nbadfz <- nbadfz %>% mutate(negtov = TOV * -1, negpf = PF * -1)
+
+
+
+
+cols <- c('FGpct', 'threePpct', 'twoPpct', 'FT', 'FTpct', 'TRB', 'AST', 'STL', 'BLK', 'PTS', 'negtov', 'negpf') 
+cols <- unlist(cols)
+
+nbadfz %>% mutate(combined_z = rowSums(cols)/12)
+
+rowSums(statscbindScale[c(11,14,17,18,23,24,25,26,29,31,32)])
+
+
+rowsums(select(!c(Player, Pos, Tm, TOV, PF)))
+mutate(combined_z = rowSums(cols)/12)
+
+nbadf %>% select(!c(Player, Pos, Age, G, GS, MP, Tm, TOV, PF))
 
 #nbadf <- scale(nbadf[, select(!c(Player, Pos, Tm))])
 #nbazscore <- nbadf %>% mutate(across(!c(Player, Pos, Tm)), zscr)
 #nbazscore <- scale(nbadf[,-c(nbadf$Player, nbadf$Pos, nbadf$Tm)])
 #statsbind2$PTSZ <- (statsbind2$PTS - mean(statsbind2$PTS))/sd(statsbind2$PTS)
-
-nbadf %>% mutate(across(!c(Player, Pos, Tm)), list(c(scale(.))))
-
-
+#nbadf %>% mutate(across(!c(Player, Pos, Tm)), list(c(scale(.))))
 #zscr <- function(x){
  #(x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
 #} 
-
-
-nbadfz <- as.data.frame(scale(nbadf[, c(5:29)]))
-nbadfz <- bind_cols(nbadf[, 1:4], nbadfz)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+##nbatraded <- nbadf %>% dplyr::filter(Player %in% traded)
+##nbanottraded <- nbadf %>% dplyr::filter(!Player %in% traded)
 ###nbadf %>% dplyr::mutate_at(-'Player', as.numeric) %>% str()
 
 
